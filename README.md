@@ -2,11 +2,11 @@
 Configuring Zimbra compression settings using Ansible Playbook.
 
 # Usage:
-export ANSIBLE_INVENTORY=./inventory/
-ansible-playbook playbooks/zimbra/dns.yml
-ansible-playbook playbooks/zimbra/redirect.yml
-ansible-playbook playbooks/zimbra/dumpster.yml
-ansible-playbook playbooks/zimbra/sasl.yml
-ansible-playbook playbooks/zimbra/smtp_dns_check.yml
-ansible-playbook playbooks/zimbra/cbpolicyd.yml
-ansible-playbook playbooks/zimbra/ldap_backup.yml
+<pre> export ANSIBLE_INVENTORY=./inventory/ </pre>
+<pre> ansible-playbook playbooks/zimbra/dns.yml </pre>
+<pre> ansible-playbook playbooks/zimbra/redirect.yml </pre>
+<pre> ansible-playbook playbooks/zimbra/dumpster.yml </pre>
+<pre> ansible-playbook playbooks/zimbra/sasl.yml </pre>
+<pre> ansible-playbook playbooks/zimbra/smtp_dns_check.yml </pre>
+<pre> ansible-playbook playbooks/zimbra/cbpolicyd.yml </pre>
+<pre> ansible-playbook playbooks/zimbra/ldap_backup.yml </pre>
