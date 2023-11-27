@@ -1,0 +1,15 @@
+[Unit]
+Description=Tail for CBPolicyD to Webhook
+After=network.target
+
+[Service]
+Type=simple
+Environment=LOGFILE=/opt/zimbra/log/cbpolicyd.log
+Environment=WEBHOOK=https://zulip.aynur.com/api/v1/external/slack_incoming?api_key=ITDtjRMO7ChpQert2NuYiP6oimjLUPxe&stream=alarm&topic=cbpolicyd
+Environment=FILTER=(100.
+ExecStart=/usr/local/bin/tail-webhook.sh $LOGFILE $WEBHOOK $FILTER
+TimeoutStopSec=30
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

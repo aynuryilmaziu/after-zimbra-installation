@@ -1,0 +1,5 @@
+ansible_user: root
+zimbra_user: zimbra
+hostname: mail
+domain: aynur.com
+ldap_script_path: /srv/ldap.sh

@@ -1,0 +1,56 @@
+---
+- name: SMTP and DNS checks for Postfix
+  hosts: all
+  become: true
+  remote_user: root
+
+  vars: 
+    restart: no
+    services: [zmmtactl]
+
+  tasks:
+    - name: zimbraMtaRestriction reject_invalid_helo_hostname
+      command: ./zmprov mcf +zimbraMtaRestriction reject_invalid_helo_hostname
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraMtaRestriction reject_non_fqdn_sender
+      command: ./zmprov mcf +zimbraMtaRestriction reject_non_fqdn_sender
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraMtaRestriction reject_unverified_recipient
+      command: ./zmprov mcf +zimbraMtaRestriction reject_unverified_recipient
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraMtaRestriction reject_non_fqdn_helo_hostname
+      command: ./zmprov mcf +zimbraMtaRestriction reject_non_fqdn_helo_hostname
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraMtaRestriction reject_unknown_reverse_client_hostname
+      command: ./zmprov mcf +zimbraMtaRestriction reject_unknown_reverse_client_hostname
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraMtaRestriction reject_unknown_sender_domain
+      command: ./zmprov mcf +zimbraMtaRestriction reject_unknown_sender_domain
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"    
+
+    - name: restart services
+      shell: 'su - zimbra -c "{{ item }} restart"'
+      with_items: "{{ services }}"

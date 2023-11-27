@@ -1,0 +1,75 @@
+---
+- name: Zimbra SASL username matching requirement
+  hosts: all
+  become: true
+  remote_user: root
+
+  vars: 
+    restart: no
+    services: [zmmtactl, zmconfigdctl]
+
+  tasks:
+    - name: Check zimbraMtaSmtpdRejectUnlistedRecipient value
+      command: ./zmprov gcf zimbraMtaSmtpdRejectUnlistedRecipient
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_mta_smtpd_reject_unlisted_recipient_value
+
+    - name: zimbraMtaSmtpdRejectUnlistedRecipient
+      when: "zimbra_mta_smtpd_reject_unlisted_recipient_value.stdout != 'zimbraMtaSmtpdRejectUnlistedRecipient: yes'"
+      command: ./zmprov mcf zimbraMtaSmtpdRejectUnlistedRecipient yes
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+      notify: restart services
+
+    - name: Check zimbraMtaSmtpdRejectUnlistedSender value
+      command: ./zmprov gcf zimbraMtaSmtpdRejectUnlistedSender
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_mta_smtpd_reject_unlisted_sender_value
+
+    - name: zimbraMtaSmtpdRejectUnlistedSender
+      when: "zimbra_mta_smtpd_reject_unlisted_sender_value.stdout != 'zimbraMtaSmtpdRejectUnlistedSender: yes'"
+      command: ./zmprov mcf zimbraMtaSmtpdRejectUnlistedSender yes
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+      notify: restart services
+
+    - name: Check zimbraMtaSmtpdSenderLoginMaps value
+      command: ./zmprov gcf zimbraMtaSmtpdSenderLoginMaps
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_mta_smtpd_sender_login_maps_value 
+    
+    - name: zimbraMtaSmtpdSenderLoginMaps
+      when: zimbra_mta_smtpd_sender_login_maps_value.stdout | length == 0
+      command: ./zmprov mcf +zimbraMtaSmtpdSenderLoginMaps proxy:ldap:/opt/zimbra/conf/ldap-slm.cf
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+      notify: restart services
+
+    - name: Check zimbraMtaSmtpdSenderRestrictions value
+      command: ./zmprov gcf zimbraMtaSmtpdSenderRestrictions
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_mta_smtpd_sender_restrictions_value
+
+    - name: zimbraMtaSmtpdSenderRestrictions
+      when: zimbra_mta_smtpd_sender_restrictions_value.stdout | length == 0
+      command: ./zmprov mcf +zimbraMtaSmtpdSenderRestrictions reject_authenticated_sender_login_mismatch
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+      notify: restart services
+
+  handlers:
+    - name: restart services
+      shell: 'su - zimbra -c "{{ item }} restart"'
+      with_items: "{{ services }}"

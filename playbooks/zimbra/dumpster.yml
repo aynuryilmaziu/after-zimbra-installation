@@ -1,0 +1,67 @@
+---
+- name: Enabling Dumpster for default service class
+  hosts: all
+  become: true
+  remote_user: root
+
+  vars: 
+    restart: no
+
+  tasks:
+    - name: Check zimbraDumpsterEnabled value
+      command: ./zmprov gc default zimbraDumpsterEnabled
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_dumpster_enabled_value
+
+    - name: zimbraDumpsterEnabled
+      when: "zimbra_dumpster_enabled_value.stdout != 'zimbraDumpsterEnabled: TRUE'"
+      command: ./zmprov mc default zimbraDumpsterEnabled TRUE
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: Check zimbraDumpsterPurgeEnabled value
+      command: ./zmprov gc default zimbraDumpsterPurgeEnabled
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_dumpster_purge_enabled_value
+
+    - name: zimbraDumpsterPurgeEnabled
+      when: "zimbra_dumpster_purge_enabled_value.stdout != 'zimbraDumpsterPurgeEnabled: FALSE'"
+      command: ./zmprov mc default zimbraDumpsterPurgeEnabled FALSE
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: Check zimbraDumpsterUserVisibleAge value
+      command: ./zmprov gc default zimbraDumpsterUserVisibleAge
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_dumpster_user_visible_age_value
+
+    - name: zimbraDumpsterUserVisibleAge
+      when: "zimbra_dumpster_user_visible_age_value.stdout != 'zimbraDumpsterUserVisibleAge: 90d'"
+      command: ./zmprov mc default zimbraDumpsterUserVisibleAge 90d
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: Check zimbraMailDumpsterLifetime value
+      command: ./zmprov gc default zimbraMailDumpsterLifetime
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_mail_dumpster_life_time_value
+
+    - name: zimbraMailDumpsterLifetime
+      when: "zimbra_mail_dumpster_life_time_value.stdout != 'zimbraMailDumpsterLifetime: 90d'"
+      command: ./zmprov mc default zimbraMailDumpsterLifetime 90d
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+

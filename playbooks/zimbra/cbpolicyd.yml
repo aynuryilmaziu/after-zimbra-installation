@@ -1,0 +1,112 @@
+---
+- name: Zimbra CBPolicyD
+  hosts: all
+  become: true
+  remote_user: root
+
+  vars: 
+    restart: no
+    services: [zmmtactl, zmcbpolicydctl]   
+
+  tasks:
+    - name: Clone a github repository
+      git:
+        repo: https://github.com/Zimbra/zm-core-utils.git
+        dest: /root/zm-core-utils
+        clone: yes
+        update: yes
+  
+    - name: Go to the folder and execute command
+      command: chdir=/root/zm-core-utils/src/bin ls
+    
+    - name: Execute the script
+      command: sh /root/zm-core-utils/src/bin/cbpolicyd.sh
+
+    - name: Remove ipv6 loopback addr for ansible_hostname
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: '::1         localhost localhost.localdomain localhost6 localhost6.localdomain6'
+        state: absent
+  
+    - name: zimbraServiceInstalled
+      command: ./zmprov ms "{{ hostname }}"."{{ domain }}" +zimbraServiceInstalled cbpolicyd
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraServiceEnabled
+      command: ./zmprov ms "{{ hostname }}"."{{ domain }}" +zimbraServiceEnabled cbpolicyd
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraMtaRestriction check_policy_service
+      command: ./zmprov mcf +zimbraMtaRestriction 'check_policy_service inet:127.0.0.1:10031'
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: zimbraCBPolicydQuotasEnabled
+      command: ./zmprov ms "{{ hostname }}"."{{ domain }}" zimbraCBPolicydQuotasEnabled TRUE
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+
+    - name: restart services
+      shell: 'su - zimbra -c "{{ item }} restart"'
+      with_items: "{{ services }}"
+
+# mysql policyd_db limitlerini değiştirme
+
+    - name: Retrieve Zimbra MySQL password
+      shell: "/opt/zimbra/bin/zmlocalconfig -s | grep zimbra_mysql_password | awk -F ' = ' '{print $2}'"
+      register: mysql_password
+      no_log: true
+    - name: Execute SQL queries
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "UPDATE policyd_db.policy_members SET Source = '!%whitelist' WHERE ID = 6"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "INSERT INTO policyd_db.policy_groups VALUES (3, 'whitelist', 0, NULL)"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "INSERT INTO policyd_db.policy_group_members VALUES (4, 1, '172.16.0.0/12', 0, NULL)"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "INSERT INTO policyd_db.policy_group_members VALUES (5, 1, '192.168.0.0/16', 0, NULL)"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "INSERT INTO policyd_db.policy_group_members VALUES (6, 3, '127.0.0.0/8', 0, NULL)"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "INSERT INTO policyd_db.quotas VALUES (5, 6, 'Quota on all /32s', 'SenderIP:/32', 3600, 'DEFER', 'You are sending too many emails, contact helpdesk', 0, NULL, 0)"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "UPDATE policyd_db.quotas SET Period = 3600"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "INSERT INTO policyd_db.quotas_limits VALUES (6, 5, 'MessageCount', 120, NULL, 0)"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "UPDATE policyd_db.quotas_limits SET CounterLimit = 120 WHERE Type = 'MessageCount'"
+      command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "UPDATE policyd_db.quotas_limits SET Disabled = 1 WHERE ID = 4"
+      #command: ./mysql -u zimbra -p{{ mysql_password.stdout }} -e "INSERT INTO policyd_db.policy_group_members VALUES (7, 3, '94.61.8.210', 0, NULL)" #PMG IP adresi -- Whitelist
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+      when: mysql_password.stdout != ""
+
+
+# servis dosyası oluşturma
+    - name: Copy tail-webhook.sh
+      copy:
+        src: files/tail-webhook.sh
+        dest: /usr/local/bin/tail-webhook.sh
+        owner: root
+        group: root
+        mode: 0755
+
+# systemd servisi oluşturma
+    - name: Create tail-webhook-cbpolicyd.service in /etc/systemd/system/
+      template:
+        src: "files/tail-webhook-cbpolicyd.j2"
+        dest: "/etc/systemd/system/tail-webhook-cbpolicyd.service"
+        mode: 0644
+        owner: "root"
+        group: "root"
+    
+    - name: Maintain tail-webhook-cbpolicyd service
+      service:
+        name: tail-webhook-cbpolicyd
+        daemon_reload: yes
+        state: started
+        enabled: yes
+    

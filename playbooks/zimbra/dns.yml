@@ -1,0 +1,30 @@
+---
+- name: Zimbra should not deliver internal email via DNS
+  hosts: all
+  become: true
+  remote_user: root
+
+  vars: 
+    restart: no
+    services: [zmmtactl]
+
+  tasks:
+    - name: Check zimbraMtaLmtpHostLookup value
+      command: ./zmprov gcf zimbraMtaLmtpHostLookup
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_mta_lmtp_host_lookup_value
+
+    - name: zimbraMtaLmtpHostLookup
+      when: "zimbra_mta_lmtp_host_lookup_value.stdout != 'zimbraMtaLmtpHostLookup: native'"
+      command: ./zmprov mcf zimbraMtaLmtpHostLookup native
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+      notify: restart services
+
+  handlers:
+    - name: restart services
+      shell: 'su - zimbra -c "{{ item }} restart"'
+      with_items: "{{ services }}"

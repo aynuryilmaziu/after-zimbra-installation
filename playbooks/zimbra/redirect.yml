@@ -1,0 +1,30 @@
+---
+- name: Redirect HTTP to HTTPS
+  hosts: all
+  become: true
+  remote_user: root
+
+  vars: 
+    restart: no
+    services: [zmproxyctl]
+
+  tasks:
+    - name: Check zimbraReverseProxyMailMode value
+      command: ./zmprov gs "{{ hostname }}"."{{ domain }}" zimbraReverseProxyMailMode
+      args:
+        chdir: /opt/zimbra/bin
+      register: zimbra_reverse_proxy_mail_mode_value
+
+    - name: zimbraReverseProxyMailMode
+      when: "zimbra_reverse_proxy_mail_mode_value.stdout_lines[1] != 'zimbraReverseProxyMailMode: redirect'"
+      command: ./zmprov ms "{{ hostname }}"."{{ domain }}" zimbraReverseProxyMailMode redirect
+      args:
+        chdir: /opt/zimbra/bin
+      become: true
+      become_user: "{{ zimbra_user }}"
+      notify: restart services
+
+  handlers:
+    - name: restart services
+      shell: 'su - zimbra -c "{{ item }} restart"'
+      with_items: "{{ services }}"

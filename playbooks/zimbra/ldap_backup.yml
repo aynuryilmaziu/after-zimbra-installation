@@ -1,0 +1,24 @@
+---
+- name: Zimbra LDAP Backup Script
+  hosts: all
+  become: true
+  remote_user: root
+
+  tasks:
+    - name: Copy ldap.sh
+      copy:
+        src: files/ldap.sh
+        dest: "{{ ldap_script_path }}"
+        owner: root
+        group: root
+        mode: 0755
+  
+    - name: Create cron job for script ldap.sh
+      cron:
+        name: "LDAP Backup"
+        minute: "0"
+        hour: "1"
+        day: "*"
+        month: "*"
+        weekday: "*"
+        job: "/bin/bash {{ ldap_script_path }} > /dev/null 2>&1" 
